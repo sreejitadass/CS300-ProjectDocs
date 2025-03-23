@@ -1,0 +1,92 @@
+digraph R2UNet_with_AttentionGates {
+    rankdir=TB; // Top-to-bottom layout for U-shape
+    splines=ortho; // Clean, right-angled edges
+    nodesep=0.5; // Spacing between nodes
+    ranksep=1.0; // Spacing between levels
+    
+    // Node styling
+    node [shape=box, style=filled, fillcolor=lightgray, fontname="Arial", fontsize=10];
+
+    // Input
+    "Input" [label="Input\nImage", fillcolor=lightblue];
+
+    // Encoder Path (Left Side)
+    "Enc1" [label="RRCNN\n(64)", fillcolor=lightyellow];
+    "Enc2" [label="RRCNN\n(128)", fillcolor=lightyellow];
+    "Enc3" [label="RRCNN\n(256)", fillcolor=lightyellow];
+    "Enc4" [label="RRCNN\n(512)", fillcolor=lightyellow];
+    "Enc5" [label="RRCNN\n(1024)", fillcolor=lightyellow];
+
+    // Decoder Path (Right Side)
+    "Dec5" [label="Up_RRCNN\n(512)", fillcolor=lightgreen];
+    "Dec4" [label="Up_RRCNN\n(256)", fillcolor=lightgreen];
+    "Dec3" [label="Up_RRCNN\n(128)", fillcolor=lightgreen];
+    "Dec2" [label="Up_RRCNN\n(64)", fillcolor=lightgreen];
+
+    // Output
+    "Output" [label="Output\nSegmentation\nMap", fillcolor=lightblue];
+
+    // Attention Gates (Middle)
+    "Att5" [label="Att5", fillcolor=lightcoral];
+    "Att4" [label="Att4", fillcolor=lightcoral];
+    "Att3" [label="Att3", fillcolor=lightcoral];
+    "Att2" [label="Att2", fillcolor=lightcoral];
+
+    // Main Flow
+    "Input" -> "Enc1" [color=black];
+    "Enc1" -> "Enc2" [color=orange, label="Max-pooling\n(2x2)"];
+    "Enc2" -> "Enc3" [color=orange, label="Max-pooling\n(2x2)"];
+    "Enc3" -> "Enc4" [color=orange, label="Max-pooling\n(2x2)"];
+    "Enc4" -> "Enc5" [color=orange, label="Max-pooling\n(2x2)"];
+    "Enc5" -> "Dec5" [color=green, label="Conv. Trans.\n3x3 + ReLU"];
+    "Dec5" -> "Dec4" [color=green, label="Conv. Trans.\n3x3 + ReLU"];
+    "Dec4" -> "Dec3" [color=green, label="Conv. Trans.\n3x3 + ReLU"];
+    "Dec3" -> "Dec2" [color=green, label="Conv. Trans.\n3x3 + ReLU"];
+    "Dec2" -> "Output" [color=blue, style=dashed, label="Conv. 1x1\n+ ReLU"];
+
+    // Skip Connections with Attention Gates
+    "Enc4" -> "Att5" [style=dashed, color=blue];
+    "Dec5" -> "Att5" [style=dashed, color=blue, label="g"];
+    "Att5" -> "Dec5" [style=dashed, color=blue, label="Concatenation"];
+
+    "Enc3" -> "Att4" [style=dashed, color=blue];
+    "Dec4" -> "Att4" [style=dashed, color=blue, label="g"];
+    "Att4" -> "Dec4" [style=dashed, color=blue, label="Concatenation"];
+
+    "Enc2" -> "Att3" [style=dashed, color=blue];
+    "Dec3" -> "Att3" [style=dashed, color=blue, label="g"];
+    "Att3" -> "Dec3" [style=dashed, color=blue, label="Concatenation"];
+
+    "Enc1" -> "Att2" [style=dashed, color=blue];
+    "Dec2" -> "Att2" [style=dashed, color=blue, label="g"];
+    "Att2" -> "Dec2" [style=dashed, color=blue, label="Concatenation"];
+
+    // Grouping for U-Shape
+    { rank=same; "Input"; "Output"; }
+    { rank=same; "Enc1"; "Att2"; "Dec2"; }
+    { rank=same; "Enc2"; "Att3"; "Dec3"; }
+    { rank=same; "Enc3"; "Att4"; "Dec4"; }
+    { rank=same; "Enc4"; "Att5"; "Dec5"; }
+    { rank=same; "Enc5"; }
+
+    // Legend (Right Side)
+    subgraph cluster_legend {
+        label="LEGEND";
+        style=solid;
+        node [shape=box, style=filled, fontsize=8];
+        "RRCNN" [label="Recurrent Conv.\nUnit with ReLU", fillcolor=lightyellow];
+        "Up_RRCNN" [label="Recurrent Up-Conv.\nUnit with ReLU", fillcolor=lightgreen];
+        "Att" [label="Attention Gate", fillcolor=lightcoral];
+        "Maxpool" [label="Max-pooling (2x2)", fillcolor=white];
+        "Conv_Trans" [label="Conv. Trans.\n3x3 + ReLU", fillcolor=white];
+        "Conv_1x1" [label="Conv. 1x1\n+ ReLU", fillcolor=white];
+        "Concat" [label="Concatenation\nor addition", fillcolor=white];
+
+        "RRCNN" -> "Up_RRCNN" [style=invis];
+        "Up_RRCNN" -> "Att" [style=invis];
+        "Att" -> "Maxpool" [style=invis];
+        "Maxpool" -> "Conv_Trans" [color=orange, label="Max-pooling"];
+        "Conv_Trans" -> "Conv_1x1" [color=green, label="Conv. Trans."];
+        "Conv_1x1" -> "Concat" [color=blue, style=dashed, label="Concat"];
+    }
+}
